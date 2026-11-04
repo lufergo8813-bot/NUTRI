@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0B2545"><meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Recomp · Recomposición corporal</title>
+<style>
+:root{--n:#0B2545;--n2:#13315C;--m:#5FD3B3;--m2:#DFF7F0;--c:#FF7A66;--c2:#FFE6E1;--bg:#F3F9F8;--g:#6B7C93}
+*{box-sizing:border-box;margin:0}
+body{font:15px/1.4 "Avenir Next","Trebuchet MS",system-ui,sans-serif;background:var(--bg);color:var(--n);padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+header{background:var(--n);color:#fff;padding:calc(20px + env(safe-area-inset-top)) 18px 56px;border-radius:0 0 28px 28px}
+h1{font:700 24px Georgia,serif}
+main{margin:-38px 14px 0;display:grid;gap:12px}
+.card{background:#fff;border-radius:20px;padding:16px;box-shadow:0 6px 18px #0b25451a}
+h2{font-size:16px;margin-bottom:8px}
+small,.s{font-size:12px;color:var(--g)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #dbe8e6;padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;background:none;border:0;font:11px inherit;color:var(--g);padding:4px}
+nav button.on{color:var(--n);font-weight:700}
+nav i{display:block;font-style:normal;font-size:21px}
+.chip{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;background:var(--m2);font-weight:600;margin:2px 3px 2px 0}
+.chip.c{background:var(--c2);color:#b8402d}
+.bar{height:8px;border-radius:9px;background:#e6efee;overflow:hidden;margin:3px 0 8px}.bar b{display:block;height:100%;border-radius:9px}
+input,select{width:100%;padding:10px;border:1.5px solid #d3e3e1;border-radius:12px;font:inherit;background:#fff;color:var(--n)}
+label{font-size:12px;color:var(--g);display:block;margin:9px 0 3px}
+.btn{background:var(--c);color:#fff;border:0;border-radius:14px;padding:12px;font:700 15px inherit;width:100%;margin-top:10px}
+.btn.n{background:var(--n)}.btn.m{background:var(--m);color:var(--n)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.donut{width:118px;height:118px;border-radius:50%;display:grid;place-items:center;flex:none}
+.donut div{width:82px;height:82px;background:#fff;border-radius:50%;display:grid;place-items:center;text-align:center;font:700 18px/1.1 Georgia,serif}
+.ev{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #edf3f2}
+.ev:last-child{border:0}
+.ck{width:26px;height:26px;border-radius:50%;border:2px solid var(--m);flex:none;display:grid;place-items:center;color:#fff;font-size:14px}
+.ck.on{background:var(--m)}
+.t{font-weight:700;width:46px;flex:none}
+.sb{flex:1;border:1.5px solid #d3e3e1;background:#fff;border-radius:12px;padding:8px 2px;font:12px inherit;color:var(--n)}
+.sb.on{background:var(--c);border-color:var(--c);color:#fff;font-weight:700}
+.tw{overflow-x:auto}table{border-collapse:collapse;font-size:12px;width:100%;min-width:430px}
+td,th{padding:7px 4px;text-align:center;border-bottom:1px solid #e6efee}th{color:var(--g);font-weight:600}tr.now{background:var(--m2);font-weight:700}
+.ring{position:relative;width:170px;height:170px;border-radius:50%;margin:6px auto}
+.ring>div.in{position:absolute;inset:25px;background:#fff;border-radius:50%;display:grid;place-items:center;text-align:center;font:700 22px/1.1 Georgia,serif}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:10px}
+.strip span{border-radius:8px;text-align:center;padding:6px 0;font-size:11px;color:#fff}
+</style></head><body>
+<div id="app"></div><nav id="nav"></nav>
+<script>
+const K='recomp_v1',$=s=>document.querySelector(s);
+let S=JSON.parse(localStorage.getItem(K)||'null')||{p:null,w:[],t:{},h:{}},tab='hoy',sel=null;
+const save=()=>localStorage.setItem(K,JSON.stringify(S));
+const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10),today=()=>iso(new Date());
+const addD=(s,n)=>{const d=new Date(s+'T12:00');d.setDate(d.getDate()+n);return iso(d)};
+const diff=(a,b)=>Math.round((new Date(a+'T12:00')-new Date(b+'T12:00'))/864e5);
+const fd=s=>new Date(s+'T12:00').toLocaleDateString('es-CO',{day:'numeric',month:'short'});
+const r1=v=>Math.round(v*10)/10,cl=(v,a,b)=>Math.min(Math.max(v,a),b);
+const hd=(t,s,x='')=>`<h1>${t}</h1><div style="opacity:.8;font-size:13px;margin-top:2px">${s}</div>${x}`;
+
+/* ---------- Cálculo del plan (todo indexado a la semana i y a tus datos iniciales) ---------- */
+function base(p){const tmb=10*p.peso+6.25*p.altura-5*p.edad-161,tdee=tmb*p.act,cap=p.peso*.0075;let r=(p.peso-p.meta)/p.sem,w='';
+ if(r>cap){r=cap;w='Tu meta pide bajar más de 0,75% del peso por semana. Ajusté a un ritmo seguro: con este horizonte llegarías a ~'+r1(p.peso-r*p.sem)+' kg. Alarga las semanas si quieres llegar a tu meta.'}
+ if(r<-cap/2)r=-cap/2;return{tmb,tdee,r,w}}
+function wk(p,i){const b=base(p),d=(i+1)%4==0,ramp=i<2?.6:1,df=d?0:b.r*7700/7*ramp,
+ k=Math.round(Math.max(b.tdee-df,b.tmb,1200)/5)*5,pr=Math.round(p.peso*(i<2?1.8:2)),fa=Math.round(p.peso*.8),ch=Math.max(Math.round((k-pr*4-fa*9)/4),50);
+ return{i,k,pr,fa,ch,d,def:b.tdee-k,fase:d?'Descarga':i<2?'Adaptación':i<p.sem*.6?'Construcción':'Intensidad',cardio:Math.min(20+Math.floor(i/2)*5,45),pasos:Math.min(7000+Math.floor(i/4)*500,10000),rpe:d||i<2?6:i<p.sem*.6?7:8}}
+function curve(p){let w=p.peso;const a=[w];for(let i=0;i<p.sem;i++){w-=wk(p,i).def*7/7700;a.push(r1(w))}return a}
+const wi=(d=today())=>cl(Math.floor(diff(d,S.p.ini)/7),0,S.p.sem-1);
+
+/* ---------- Ciclo menstrual ---------- */
+const FA=[['Menstrual','#FF7A66','Energía variable: entrena según cómo te sientas, prioriza movilidad y alimentos con hierro (carnes, lentejas con vitamina C).',0],
+['Folicular','#5FD3B3','Buena energía y recuperación: el mejor momento para subir cargas y buscar récords.',0],
+['Ovulación','#2BB39A','Fuerza alta. Calienta bien y cuida rodillas en saltos y cambios de dirección.',0],
+['Lútea','#13315C','Más hambre y menos recuperación: sumo +100 kcal. Si estás cansada baja 1 serie accesoria. Los antojos son normales.',100]];
+function fase(d){const p=S.p;if(p.cy!='si'||!p.cs)return null;const L=p.cl||28,n=((diff(d,p.cs)%L)+L)%L+1,o=Math.round(L/2);return{n,L,o,f:n<=5?0:n<o-1?1:n<=o+1?2:3}}
+function dia(d){const w=wk(S.p,wi(d)),c=fase(d),x=c?FA[c.f][3]:0;return{...w,k:w.k+x,ch:w.ch+Math.round(x/4),c}}
+
+/* ---------- Comidas y entrenos ---------- */
+const ML={3:[['Desayuno',1,30],['Almuerzo',6,40],['Cena',11.5,30]],4:[['Desayuno',1,25],['Almuerzo',5,35],['Merienda',9,15],['Cena',12,25]],5:[['Desayuno',1,22],['Media mañana',4,12],['Almuerzo',7,28],['Merienda',10,12],['Cena',12.5,26]]};
+const tmin=s=>{const[a,b]=s.split(':').map(Number);return a*60+b},fm=m=>{m%=1440;return String(m/60|0).padStart(2,'0')+':'+String(m%60).padStart(2,'0')};
+const mt=o=>Math.round((tmin(S.p.wake)+o*60)/5)*5;
+const X={hip:['Hip thrust','Glúteo','4×8-10'],sq:['Sentadilla goblet','Cuádriceps','3×10'],rdl:['Peso muerto rumano','Isquios y glúteo','3×8-10'],lun:['Zancadas caminando','Pierna','3×10 c/l'],pr:['Prensa de pierna','Cuádriceps y glúteo','3×12'],
+bp:['Press con mancuernas','Pecho','3×8-10'],rem:['Remo con apoyo','Espalda','3×10'],jal:['Jalón al pecho','Dorsal','3×10-12'],pm:['Press militar','Hombro','3×10'],pl:['Plancha','Core','3×30-40 s'],el:['Elevaciones laterales','Hombro','3×12-15'],pat:['Patada de glúteo en polea','Glúteo','3×12 c/l'],cu:['Curl femoral','Isquios','3×12'],ab:['Abducción de cadera','Glúteo medio','3×15']};
+const g=a=>a.map(k=>X[k]);
+const RT={3:[['Full body A',g(['sq','bp','rem','pl'])],['Full body B',g(['rdl','pm','jal','hip'])],['Full body C',g(['pr','bp','rem','pat'])]],
+4:[['Inferior A · glúteo',g(['hip','sq','rdl','ab'])],['Superior A',g(['bp','jal','pm','rem'])],['Inferior B · pierna',g(['pr','lun','cu','pat'])],['Superior B',g(['pm','rem','bp','el','pl'])]]};
+RT[5]=[...RT[4],['Full body + cardio',g(['sq','rem','bp','pl'])]];
+const DS={3:[1,3,5],4:[1,2,4,5],5:[1,2,3,4,5]},SN=['','😊 Fácil','🙂 Bien','😤 Duro','🥵 Límite'];
+const last=n=>{for(const d of Object.keys(S.t).sort().reverse()){const e=S.t[d].ex?.[n];if(d!==today()&&e&&e.kg)return e}return null};
+const sug=l=>!l?'Primera vez: elige un peso con el que sobren ~3 repeticiones.':l.s<=2?`Sube a ${r1(l.kg*1.05)} kg (+5%).`:l.s==4?`Baja a ${r1(l.kg*.95)} kg o repite.`:`Mantén ${l.kg} kg y busca 1 repetición más.`;
+function up(i,f,v){const r=RT[S.p.dias][sel],t=S.t[today()]=S.t[today()]||{r:r[0],ex:{}};t.r=r[0];const e=t.ex[r[1][i][0]]=t.ex[r[1][i][0]]||{};e[f]=+v;save();if(f=='s')R()}
+const hb=(k,v)=>{const h=S.h[today()]=S.h[today()]||{a:0,m:[]};if(k=='a')h.a=Math.max(0,h.a+v);else if(k=='m')h.m[v]=!h.m[v];else h[k]=!h[k];save();R()};
+
+/* ---------- Pantallas ---------- */
+function hoy(){const p=S.p,d=today(),x=dia(d),h=S.h[d]||{a:0,m:[]},rs=RT[p.dias],ti=DS[p.dias].indexOf(new Date().getDay()),
+ lw=S.w.length?S.w[S.w.length-1].w:p.peso,pg=cl((p.peso-lw)/((p.peso-p.meta)||1)*100,0,100),
+ tot=x.pr*4+x.ch*4+x.fa*9,a=x.pr*4/tot*100,b=a+x.ch*4/tot*100,vasos=Math.round(p.peso*35/250);
+ const ev=ML[p.nc].map(([n,o,pc],i)=>({m:mt(o),h:`<div class=ev onclick="hb('m',${i})"><div class="ck ${h.m[i]?'on':''}">${h.m[i]?'✓':''}</div><div class=t>${fm(mt(o))}</div><div style="flex:1"><b>${n}</b><br><small>P ${Math.round(x.pr*pc/100)} · C ${Math.round(x.ch*pc/100)} · G ${Math.round(x.fa*pc/100)} g</small></div></div>`}));
+ ev.push({m:tmin(p.tr),h:`<div class=ev style="background:var(--c2);border-radius:12px;padding:9px"><div class=t>${p.tr}</div><div style="flex:1"><b>🏋️ ${ti<0?'Descanso activo':rs[ti][0]}</b><br><small>${ti<0?'Caminata o movilidad 30 min':'Come 1-2 h antes y proteína dentro de 2 h después'}</small></div></div>`});
+ ev.sort((u,v)=>u.m-v.m);
+ const hab=(k,t,s)=>`<div class=ev onclick="hb('${k}')"><div class="ck ${h[k]?'on':''}">${h[k]?'✓':''}</div><div><b>${t}</b><br><small>${s}</small></div></div>`;
+ return[hd('Hola, '+p.nombre,`Semana ${x.i+1} de ${p.sem} · ${x.fase}`,`<div class=bar style="background:#13315C;margin-top:14px"><b style="width:${pg}%;background:var(--m)"></b></div><div class=s style="color:#bcd">${lw} kg → ${p.meta} kg · ${Math.round(pg)}% del camino</div>`),
+ `<div class=card><div class=row style="gap:14px"><div class=donut style="background:conic-gradient(#5FD3B3 0 ${a}%,#13315C ${a}% ${b}%,#FF7A66 ${b}% 100%)"><div><span>${x.k}<br><small>kcal</small></span></div></div><div style="flex:1">`+
+ [['Proteína',x.pr,'#5FD3B3',4],['Carbohidratos',x.ch,'#13315C',4],['Grasas',x.fa,'#FF7A66',9]].map(([n,v,c,m])=>`<div style="font-size:13px">${n} <b>${v} g</b></div><div class=bar><b style="width:${v*m/tot*100}%;background:${c}"></b></div>`).join('')+`</div></div>`+(x.c?`<span class=chip>Fase ${FA[x.c.f][0].toLowerCase()} · día ${x.c.n}</span>`:'')+`</div>`+
+ `<div class=card><h2>Tu día</h2>${ev.map(e=>e.h).join('')}</div>`+
+ `<div class=card><h2>Hábitos de hoy</h2><div class=ev><div style="flex:1"><b>💧 Agua</b><br><small>${h.a} de ${vasos} vasos (250 ml)</small><div class=bar><b style="width:${cl(h.a/vasos*100,0,100)}%;background:var(--m)"></b></div></div><button class="sb" style="flex:none;width:40px" onclick="hb('a',-1)">−</button><button class="sb on" style="flex:none;width:40px" onclick="hb('a',1)">+</button></div>${hab('p','👟 Pasos',x.pasos+' pasos')}${hab('s','😴 Sueño','7 a 9 horas')}${hab('z','🚶 Cardio suave',x.cardio+' min zona 2 (puedes hablar)')}</div>`+
+ (x.c?`<div class=card><h2>Tu fase: ${FA[x.c.f][0]}</h2><p style="font-size:14px">${FA[x.c.f][2]}</p></div>`:'')]}
+
+function plan(){const p=S.p,b=base(p),c=curve(p),n=wi(),w=wk(p,0);
+ return[hd('Tu plan',`${p.sem} semanas · de ${p.peso} a ${p.meta} kg`),
+ `<div class=card><h2>Cómo se calculó</h2><p style="font-size:14px">Tu cuerpo gasta en reposo ~<b>${Math.round(b.tmb)} kcal</b>; con tu actividad, ~<b>${Math.round(b.tdee)} kcal</b> al día. Ritmo: <b>${r1(Math.abs(b.r)*1000)/1000} kg por semana</b>${b.r>0?' (déficit suave, escalonado)':' (superávit suave)'}. Las semanas 1-2 arrancan al 60% y cada 4.ª semana subes a mantenimiento para recuperar energía. Proteína ${r1(1.8)}→2 g/kg para cuidar el músculo, grasas 0,8 g/kg y carbohidratos con el resto.</p>${b.w?`<p class=chip style="background:var(--c2);white-space:normal;margin-top:8px">${b.w}</p>`:''}</div>`+
+ `<div class=card><h2>Semana a semana</h2><div class=tw><table><tr><th>Sem</th><th>Fase</th><th>kcal</th><th>P</th><th>C</th><th>G</th><th>Peso est.</th><th>Cardio</th><th>Pasos</th></tr>${c.slice(1).map((v,i)=>{const x=wk(p,i);return`<tr class="${i==n?'now':''}"><td>${i+1}</td><td>${x.fase}</td><td>${x.k}</td><td>${x.pr}</td><td>${x.ch}</td><td>${x.fa}</td><td>${v}</td><td>${x.cardio}'</td><td>${x.pasos}</td></tr>`}).join('')}</table></div><p class=s style="margin-top:6px">P, C, G = gramos de proteína, carbohidrato y grasa por día. En fase lútea la app suma +100 kcal sola.</p></div>`]}
+
+function ent(){const p=S.p,rs=RT[p.dias],ti=DS[p.dias].indexOf(new Date().getDay());if(sel===null||!rs[sel])sel=ti<0?0:ti;
+ const r=rs[sel],lg=S.t[today()]?.ex||{},w=wk(p,wi()),c=fase(today());
+ return[hd('Entreno',ti<0?'Hoy es descanso activo, pero puedes entrenar si quieres':'Hoy: '+rs[ti][0]),
+ `<div class=card>${rs.map((x,i)=>`<span class="chip ${i==sel?'c':''}" onclick="sel=${i};R()">${x[0]}</span>`).join('')}<p style="font-size:13px;margin-top:6px">Semana ${w.i+1} · ${w.fase}: esfuerzo RPE ${w.rpe}, deja ${10-w.rpe} repeticiones en reserva${w.d?'. Descarga: 1 serie menos por ejercicio':''}.${c&&c.f==3?' Fase lútea: si estás cansada, quita 1 serie accesoria.':''}${c&&c.f==1?' Fase folicular: buen momento para subir cargas.':''}</p></div>`+
+ r[1].map((e,i)=>{const l=last(e[0]),v=lg[e[0]]||{};return`<div class=card><div class=row><b>${e[0]}</b><span class="chip c">${e[1]}</span></div><small>${e[2]}${l?` · Última: ${l.kg} kg × ${l.reps||'-'}${l.s?' · '+SN[l.s].slice(3):''}`:''}</small><p style="font-size:13px;margin-top:4px">💡 ${sug(l)}</p><div class=g2><div><label>Peso (kg)</label><input type=number step=any inputmode=decimal value="${v.kg??''}" onchange="up(${i},'kg',this.value)"></div><div><label>Repeticiones</label><input type=number inputmode=numeric value="${v.reps??''}" onchange="up(${i},'reps',this.value)"></div></div><label>¿Cómo se sintió?</label><div class=row style="gap:5px">${[1,2,3,4].map(s=>`<button class="sb ${v.s==s?'on':''}" onclick="up(${i},'s',${s})">${SN[s]}</button>`).join('')}</div></div>`}).join('')]}
+
+function chart(){const p=S.p,c=curve(p),W=[...S.w].sort((a,b)=>a.d<b.d?-1:1),all=[...c,...W.map(x=>x.w),p.meta],mn=Math.min(...all)-1,mx=Math.max(...all)+1,
+ X_=v=>34+cl(v,0,p.sem)/p.sem*276,Y=v=>10+(mx-v)/(mx-mn)*128,pts=W.map(x=>[X_(diff(x.d,p.ini)/7),Y(x.w)]);
+ return`<svg viewBox="0 0 320 160" width="100%"><line x1=34 x2=310 y1=${Y(p.meta)} y2=${Y(p.meta)} stroke="#5FD3B3" stroke-width=2 stroke-dasharray="3 4"/><text x=36 y=${Y(p.meta)-4} font-size=9 fill="#2BB39A">meta ${p.meta}</text><polyline fill=none stroke="#13315C" stroke-width=2 stroke-dasharray="5 4" points="${c.map((v,i)=>X_(i)+','+Y(v)).join(' ')}"/>
+ <polyline fill=none stroke="#FF7A66" stroke-width=3 points="${pts.join(' ')}"/>${pts.map(q=>`<circle cx=${q[0]} cy=${q[1]} r=4 fill="#FF7A66"/>`).join('')}<text x=2 y=16 font-size=9 fill="#6B7C93">${Math.round(mx)}</text><text x=2 y=140 font-size=9 fill="#6B7C93">${Math.round(mn)}</text><text x=34 y=156 font-size=9 fill="#6B7C93">sem 0</text><text x=290 y=156 font-size=9 fill="#6B7C93">sem ${p.sem}</text></svg>`}
+function lw(){const v=+$('#pw').value;if(!v)return;const d=$('#pd').value||today(),c=+$('#pc').value||null;S.w=S.w.filter(x=>x.d!=d);S.w.push({d,w:v,c});S.w.sort((a,b)=>a.d<b.d?-1:1);save();R()}
+function prog(){const p=S.p,W=S.w,l=W.length?W[W.length-1]:null,e=curve(p)[wi()+(diff(today(),p.ini)>=0?1:0)]??p.peso,df=l?r1(l.w-e):0;
+ const msg=!l?'Registra tu primer peso para ver cómo vas contra el plan.':df>.8?'Vas por encima del plan. Antes de bajar calorías, revisa porciones, pasos y sueño; una semana irregular no define el resultado.':df<-.8?'Vas más rápido que el plan. Cuida que la energía y el rendimiento en el entreno no caigan.':'Vas en línea con el plan. Sigue así.';
+ return[hd('Progreso',l?`Último peso: ${l.w} kg (${fd(l.d)})`:'Aún sin registros'),
+ `<div class=card><h2>Peso real vs. plan</h2>${chart()}<small>Línea coral: tu peso. Línea marino punteada: lo esperado.</small><p style="margin-top:6px;font-size:14px">${msg}</p></div>`+
+ `<div class=card><h2>Registrar medidas</h2><div class=g2><div><label>Peso (kg)</label><input id=pw type=number step=any inputmode=decimal></div><div><label>Cintura (cm) opcional</label><input id=pc type=number step=any inputmode=decimal></div></div><label>Fecha</label><input id=pd type=date value="${today()}"><button class=btn onclick="lw()">Guardar medida</button></div>`+
+ `<div class=card><h2>Historial</h2>${[...W].reverse().slice(0,8).map(x=>`<div class=row style="padding:5px 0;border-bottom:1px solid #edf3f2"><span>${fd(x.d)}</span><b>${x.w} kg</b><span class=s>${x.c?x.c+' cm':''}</span></div>`).join('')||'<small>Sin registros</small>'}</div>`]}
+
+function ciclo(){const p=S.p,c=fase(today());if(!c)return[hd('Ciclo','Desactivado'),`<div class=card><p>Activa "Seguir mi ciclo" en Ajustes para adaptar calorías y entrenos a cada fase.</p></div>`];
+ const L=c.L,pc=n=>n/L*100,st=`conic-gradient(#FF7A66 0 ${pc(5)}%,#5FD3B3 ${pc(5)}% ${pc(c.o-2)}%,#2BB39A ${pc(c.o-2)}% ${pc(c.o+1)}%,#13315C ${pc(c.o+1)}% 100%)`;
+ const day=n=>n<=5?0:n<c.o-1?1:n<=c.o+1?2:3;
+ return[hd('Ciclo',`Día ${c.n} de ${L} · fase ${FA[c.f][0].toLowerCase()}`),
+ `<div class=card><div class=ring style="background:${st}"><div class=in><span>Día ${c.n}<br><small>${FA[c.f][0]}</small></span></div><div style="position:absolute;inset:0;transform:rotate(${(c.n-.5)/L*360}deg)"><i style="position:absolute;top:-5px;left:50%;margin-left:-8px;width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid #0B2545"></i></div></div>
+ <div class=strip>${Array.from({length:L},(_,i)=>`<span style="background:${FA[day(i+1)][1]};${i+1==c.n?'outline:3px solid #0B2545':''}">${i+1}</span>`).join('')}</div><button class="btn n" onclick="S.p.cs=today();save();R()">Hoy empezó mi período</button></div>`+
+ FA.map((f,i)=>`<div class=card style="${i==c.f?'border:2px solid '+f[1]:''}"><div class=row><b>${f[0]}</b><i style="width:14px;height:14px;border-radius:50%;background:${f[1]}"></i></div><p style="font-size:13px;margin-top:4px">${f[2]}</p></div>`).join('')+
+ `<p class=s style="text-align:center">Orientación general, no diagnóstico. Si tu ciclo es irregular o tienes dolor intenso, consulta a tu médica.</p>`]}
+
+const FL=[['nombre','Nombre','text'],['edad','Edad','number'],['altura','Altura (cm)','number'],['peso','Peso inicial (kg)','number'],['meta','Peso deseado (kg)','number'],['sem','Horizonte (semanas)','number'],['act','Actividad diaria','sel',[[1.2,'Sedentaria'],[1.375,'Ligera'],[1.55,'Moderada'],[1.725,'Alta']]],['dias','Días de entreno por semana','sel',[[3,'3'],[4,'4'],[5,'5']]],['nc','Comidas al día','sel',[[3,'3'],[4,'4'],[5,'5']]],['wake','Hora de despertar','time'],['tr','Hora de entrenar','time'],['ini','Fecha de inicio','date'],['cy','Seguir mi ciclo','sel',[['si','Sí'],['no','No']]],['cs','Primer día de mi último período','date'],['cl','Duración del ciclo (días)','number']];
+const DEF={nombre:'',edad:30,altura:165,peso:70,meta:63,sem:16,act:1.375,dias:4,nc:4,wake:'06:30',tr:'18:00',ini:today(),cy:'si',cs:addD(today(),-10),cl:28};
+const form=p=>FL.map(([k,l,t,o])=>`<label>${l}</label>`+(t=='sel'?`<select id=f_${k}>${o.map(([v,n])=>`<option value="${v}"${v==p[k]?' selected':''}>${n}</option>`).join('')}</select>`:`<input id=f_${k} type=${t} value="${p[k]??''}" ${t=='number'?'step=any inputmode=decimal':''}>`)).join('');
+function sp(){const p={};FL.forEach(([k,,t])=>{const v=$('#f_'+k).value;p[k]=t=='number'||['act','dias','nc'].includes(k)?+v:v});
+ if(!p.nombre||!p.peso||!p.altura||p.sem<4){alert('Completa nombre, altura y peso, y usa un horizonte de 4 semanas o más.');return}S.p=p;save();tab='hoy';sel=null;R()}
+function aj(){return[hd('Ajustes','Cambia tus datos y el plan se recalcula solo'),
+ `<div class=card>${form(S.p)}<button class=btn onclick="sp()">Guardar y recalcular plan</button></div>
+ <div class=card><h2>Respaldo de datos</h2><p class=s>Tus datos viven solo en este dispositivo. Si limpias el navegador se borran, así que exporta seguido.</p><button class="btn m" onclick="xl()">📥 Exportar datos a Excel</button><button class="btn n" onclick="jx()">Guardar copia para restaurar (.json)</button><label>Restaurar desde copia .json</label><input type=file accept=".json" onchange="imp(this.files[0])"></div>
+ <p class=s style="text-align:center">App orientativa; no reemplaza a tu médica o nutricionista. Consulta antes de empezar si tienes alguna condición de salud o embarazo.</p>`]}
+
+/* ---------- Respaldo ---------- */
+const esc=s=>String(s??'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const sh=(n,rows)=>`<Worksheet ss:Name="${n}"><Table>${rows.map(r=>`<Row>${r.map(v=>`<Cell><Data ss:Type="${typeof v=='number'?'Number':'String'}">${esc(v)}</Data></Cell>`).join('')}</Row>`).join('')}</Table></Worksheet>`;
+const dl=(t,n,ty)=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:ty}));a.download=n;a.click()};
+function xl(){const p=S.p,c=curve(p),ex=[['Fecha','Rutina','Ejercicio','Peso (kg)','Reps','Sensación']];
+ Object.keys(S.t).sort().forEach(d=>Object.entries(S.t[d].ex||{}).forEach(([n,e])=>ex.push([d,S.t[d].r,n,e.kg??'',e.reps??'',SN[e.s]||''])));
+ const x=`<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`+
+ sh('Perfil',Object.entries(p))+sh('Plan',[['Semana','Fase','kcal','Proteína g','Carbo g','Grasa g','Peso esperado','Cardio min','Pasos'],...c.slice(1).map((v,i)=>{const w=wk(p,i);return[i+1,w.fase,w.k,w.pr,w.ch,w.fa,v,w.cardio,w.pasos]})])+
+ sh('Peso',[['Fecha','Peso (kg)','Cintura (cm)'],...S.w.map(w=>[w.d,w.w,w.c??''])])+sh('Entrenos',ex)+
+ sh('Habitos',[['Fecha','Vasos de agua','Pasos','Sueño','Cardio','Comidas hechas'],...Object.entries(S.h).map(([d,h])=>[d,h.a||0,h.p?'Sí':'No',h.s?'Sí':'No',h.z?'Sí':'No',(h.m||[]).filter(Boolean).length])])+`</Workbook>`;
+ dl(x,'recomp-'+today()+'.xls','application/vnd.ms-excel')}
+const jx=()=>dl(JSON.stringify(S),'recomp-copia-'+today()+'.json','application/json');
+function imp(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{S=JSON.parse(r.result);save();R();alert('Datos restaurados')}catch(e){alert('Ese archivo no es una copia válida')}};r.readAsText(f)}
+
+/* ---------- Render ---------- */
+const T=[['hoy','🌊','Hoy'],['plan','📈','Plan'],['ent','🏋️','Entreno'],['prog','⚖️','Progreso'],['ciclo','🌙','Ciclo'],['aj','⚙️','Ajustes']];
+const go=k=>{tab=k;R();scrollTo(0,0)};
+function R(){if(!S.p){$('#nav').innerHTML='';$('#app').innerHTML=`<header>${hd('Recomp','Cuéntame de ti y armo tu plan')}</header><main><div class=card>${form(DEF)}<button class=btn onclick="sp()">Crear mi plan</button></div></main>`;return}
+ $('#nav').innerHTML=T.map(([k,i,l])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')"><i>${i}</i>${l}</button>`).join('');
+ const v={hoy,plan,ent,prog,ciclo,aj}[tab]();$('#app').innerHTML=`<header>${v[0]}</header><main>${v[1]}</main>`}
+R();if('serviceWorker'in navigator)navigator.serviceWorker.register('service-worker.js');
+</script></body></html>
